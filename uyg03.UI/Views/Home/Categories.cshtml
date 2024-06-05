@@ -1,0 +1,251 @@
+﻿<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8" id="divList">
+            <h4 class="mb-4">Kategoriler</h4>
+
+            <table class="table table-hover table-striped" id="tbCategoryList">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Id</th>
+                        <th>Kategori</th>
+                        <th>Durumu</th>
+                        <th>Kayıt T.</th>
+                        <th>Düzenleme T.</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="col-md-4" id="divAddUpdate">
+            <h4 id="editHeader" class="mb-4">Kategori Ekle</h4>
+
+            <div class="mb-3">
+                <label for="txtName" class="form-label">Kategori</label>
+                <input type="text" class="form-control" id="txtName" />
+                <input type="hidden" id="txtId" />
+            </div>
+            <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input" id="cbIsActive" />
+                <label for="cbIsActive" class="form-check-label">Aktif</label>
+            </div>
+            <div class="d-grid gap-2 mb-3">
+                <button class="btn btn-primary" id="btnSave">Kaydet</button>
+                <button class="btn btn-secondary" id="btnEdit">Düzenle</button>
+                <button class="btn btn-danger" id="btnDelete">Sil</button>
+                <button class="btn btn-light" id="btnCancel">Vazgeç</button>
+            </div>
+
+            <div id="result"></div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+    <script>
+        $(document).ready(function () {
+            var ApiBaseUrl = "@ViewBag.ApiBaseUrl";
+
+            var token = localStorage.getItem("token");
+            if (token == "" || token == null) {
+                location.href = "/Login";
+                return false;
+            }
+
+            CategoryList();
+            $("#btnEdit").hide();
+            $("#btnDelete").hide();
+
+            function CategoryList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        CategoryListToTable(data);
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            }
+
+            function CategoryListToTable(data) {
+                $("#tbCategoryList tbody").empty();
+                var tr = '';
+                $.each(data, function (i, item) {
+                    var bg = item.isActive ? 'bg-success' : 'bg-danger';
+
+                    tr += '<tr><td>' + item.id + '</td><td>' + item.name + '</td><td><span class="badge ' + bg + '">' + (item.isActive ? 'Aktif' : 'Pasif') + '</span></td><td>' + FormatDate(item.created) + '</td><td>' + FormatDate(item.updated) + '</td><td><a href="/Educations/' + item.id + '" class="btn btn-outline-primary btn-sm">Eğitimler</a><button class="btn btn-outline-primary btn-sm ms-2 edit" id=' + item.id + '>Düzenle</button></td></tr>';
+                });
+
+                $("#tbCategoryList tbody").append(tr);
+
+                if (!userRoles.includes("Admin")) {
+                    $("#divAddUpdate").hide();
+                    $("#divList").removeClass("col-md-8").addClass("col-md-12");
+                    $(".edit").hide();
+                }
+            }
+
+            function FormatDate(d) {
+                var date = new Date(d);
+                var day = date.getDate() > 9 ? date.getDate() : '0' + date.getDate();
+                var month = (date.getMonth() + 1) > 9 ? (date.getMonth() + 1) : '0' + (date.getMonth() + 1);
+                var year = date.getFullYear();
+
+                var hour = date.getHours() > 9 ? date.getHours() : '0' + date.getHours();
+                var minute = date.getMinutes() > 9 ? date.getMinutes() : '0' + date.getMinutes();
+                var second = date.getSeconds() > 9 ? date.getSeconds() : '0' + date.getSeconds();
+
+                return day + "." + month + "." + year + " " + hour + ":" + minute + ":" + second;
+            }
+
+            $("#btnSave").click(function () {
+                var name = $("#txtName").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var category = { Name: name, IsActive: isActive };
+
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    data: JSON.stringify(category),
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            CategoryList();
+                        } else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+
+            $(document).on("click", ".edit", function () {
+                var id = $(this).attr("id");
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + id,
+                    method: "GET",
+                    contentType: "application/json",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    success: function (data) {
+                        $("#txtId").val(data.id);
+                        $("#txtName").val(data.name);
+                        $("#cbIsActive").prop("checked", data.isActive);
+
+                        $("#btnEdit").show();
+                        $("#btnDelete").show();
+                        $("#btnSave").hide();
+
+                        $("#editHeader").html("Kategori Düzenle - Sil");
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+
+            $("#btnCancel").click(function () {
+                $("#txtId").val("");
+                $("#txtName").val("");
+                $("#cbIsActive").prop("checked", false);
+                $("#btnEdit").hide();
+                $("#btnDelete").hide();
+                $("#btnSave").show();
+                $("#editHeader").html("Kategori Ekle");
+            });
+
+            $("#btnEdit").click(function () {
+                var id = $("#txtId").val();
+                var name = $("#txtName").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var category = { Id: id, Name: name, IsActive: isActive };
+
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "PUT",
+                    data: JSON.stringify(category),
+                    contentType: "application/json",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            CategoryList();
+                        } else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+
+            $("#btnDelete").click(function () {
+                var id = $("#txtId").val();
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + id,
+                    method: "DELETE",
+                    contentType: "application/json",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            CategoryList();
+                        } else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+}

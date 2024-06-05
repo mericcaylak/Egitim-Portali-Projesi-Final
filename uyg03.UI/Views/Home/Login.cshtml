@@ -1,0 +1,78 @@
+﻿@{
+    ViewData["Title"] = "Login";
+}
+
+
+<div class="row mt-5">
+    <div class="col-md-4"></div>
+    <div class="col-md-4">
+        <div class="card mb-2">
+            <div class="card-header"><h3>Oturum Aç</h3></div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label>Kullanıcı Adı</label>
+                    <input type="text" class="form-control" id="txtUserName" />
+                </div>
+                <div class="mb-2">
+                    <label>Parola</label>
+                    <input type="password" class="form-control" id="txtPassword" />
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" id="btnLogin">Oturum Aç</button>
+            </div>
+        </div>
+        <div id="result"></div>
+    </div>
+
+</div>
+@section Scripts
+    {
+    <script>
+        $(document).ready(function () {
+            var ApiBaseUrl = "@ViewBag.ApiBaseUrl";
+
+            $("#btnLogin").click(function () {
+                var userName = $("#txtUserName").val();
+                var password = $("#txtPassword").val();
+                var loginData = new Object();
+                loginData.UserName = userName;
+                loginData.Password = password;
+
+                $.ajax({
+                    url: ApiBaseUrl + "User/SignIn",
+                    method: "POST",
+                    data: JSON.stringify(loginData),
+                    contentType: "application/json",
+                    success: function (data) {
+                        if (data.status) {
+                            localStorage.setItem("token", data.message);
+                            location.href = "/Categories";
+                        } else {
+                            $("#result")
+                                .show()
+                                .removeClass()
+                                .addClass("alert alert-danger")
+                                .html(data.message)
+                                .fadeOut(3000);
+
+                        }
+                    },
+                    error: function (e) {
+                        console.log(e);
+                    }
+                });
+
+
+            });
+
+
+
+
+        });
+    </script>
+}
+
+
+
+
